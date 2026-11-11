@@ -1,0 +1,1101 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANIME WORLD: THE LEGEND</title>
+
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;overflow:hidden;background:#07101e;
+  font-family:Arial,sans-serif;color:white
+}
+#gameCanvas{
+  width:100%;height:100%;display:block;touch-action:none
+}
+#hud{
+  position:absolute;top:12px;left:12px;right:12px;
+  display:flex;justify-content:space-between;gap:10px;
+  pointer-events:none;flex-wrap:wrap
+}
+.panel{
+  background:rgba(5,12,27,.82);
+  border:1px solid #3c91ff;border-radius:12px;
+  padding:10px 13px;box-shadow:0 0 15px #087bff44;
+  min-width:150px
+}
+.small{font-size:12px;color:#b9d9ff}
+.bar{
+  width:180px;height:12px;background:#30394a;
+  border-radius:10px;overflow:hidden;margin-top:5px
+}
+.fill{height:100%;width:100%;transition:width .2s}
+#healthFill{background:#24e68a}
+#xpFill{background:#31baff}
+#bossFill{background:#ff405f}
+#bossPanel{position:absolute;top:112px;left:50%;transform:translateX(-50%);display:none}
+#message{
+  position:absolute;top:155px;left:50%;transform:translateX(-50%);
+  font-size:19px;font-weight:bold;text-align:center;
+  text-shadow:0 2px 8px black;pointer-events:none
+}
+#menu{
+  position:absolute;inset:0;background:linear-gradient(135deg,#071326ee,#111b39ee);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  z-index:10;padding:15px
+}
+.menuCard{
+  width:min(570px,96vw);padding:25px;
+  background:#101e37;border:1px solid #3c91ff;
+  border-radius:20px;box-shadow:0 0 35px #087bff55
+}
+h1{font-size:clamp(28px,6vw,48px);margin:8px 0;color:#6bcaff}
+h2{color:#ffd36b}
+button{
+  border:1px solid #72caff;border-radius:10px;
+  background:linear-gradient(135deg,#1456a8,#172b55);
+  color:white;font-weight:bold;padding:12px 15px;
+  margin:5px;cursor:pointer;touch-action:manipulation
+}
+button:hover{filter:brightness(1.3)}
+button:active{transform:scale(.96)}
+.heroChoices{display:flex;justify-content:center;flex-wrap:wrap}
+#controls{
+  position:absolute;bottom:12px;left:12px;right:12px;
+  display:flex;justify-content:space-between;align-items:end;
+  pointer-events:none
+}
+#movement,#attacks{pointer-events:auto;display:flex;gap:5px;flex-wrap:wrap}
+#movement{max-width:190px}
+#attacks{justify-content:flex-end;max-width:260px}
+.controlBtn{
+  min-width:55px;min-height:48px;
+  background:#102c54dd;border:1px solid #68caff;
+  font-size:12px;padding:9px 10px
+}
+#help{
+  position:absolute;bottom:115px;left:50%;transform:translateX(-50%);
+  font-size:12px;color:#d7eaff;text-align:center;
+  background:#061326aa;padding:7px 12px;border-radius:10px;
+  pointer-events:none
+}
+#topButtons{
+  position:absolute;top:70px;right:12px;
+  display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;
+  max-width:220px
+}
+#topButtons button{font-size:11px;padding:8px}
+#notice{
+  position:absolute;bottom:85px;left:50%;transform:translateX(-50%);
+  background:#111d32ee;padding:9px 15px;border-radius:9px;
+  display:none;text-align:center;max-width:90%;font-size:13px
+}
+@media(max-width:600px){
+  .panel{min-width:125px;padding:7px;font-size:12px}
+  .bar{width:125px}
+  #help{bottom:125px;width:90%}
+  #controls{bottom:8px}
+  .controlBtn{min-width:47px;min-height:45px;font-size:10px}
+}
+</style>
+</head>
+
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="menu">
+  <div class="menuCard">
+    <h1>⚔ ANIME WORLD ⚔</h1>
+    <h2>THE LEGEND</h2>
+    <p>Explore the world. Train your hero. Defeat the legendary bosses.</p>
+    <h3>Choose your hero</h3>
+    <div class="heroChoices">
+      <button onclick="chooseHero(0)">REN</button>
+      <button onclick="chooseHero(1)">KAI</button>
+      <button onclick="chooseHero(2)">YUKI</button>
+      <button onclick="chooseHero(3)">AKIRA</button>
+    </div>
+    <p id="heroDescription">REN — The Blue Flame Warrior</p>
+    <button onclick="startGame()" style="font-size:18px;padding:14px 35px">
+      START ADVENTURE
+    </button>
+    <p class="small">Original characters • 3D browser game • 50 levels</p>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="panel">
+    <b id="heroName">REN</b>
+    <div class="small" id="levelText">LEVEL 1</div>
+    <div class="small">HEALTH</div>
+    <div class="bar"><div class="fill" id="healthFill"></div></div>
+    <div class="small">EXPERIENCE</div>
+    <div class="bar"><div class="fill" id="xpFill"></div></div>
+  </div>
+  <div class="panel">
+    <b id="locationText">HERO VILLAGE</b>
+    <div class="small" id="questText">Quest: Explore the village</div>
+    <div class="small" id="coinText">Coins: 0</div>
+    <div class="small" id="enemyCount">Enemies nearby: 0</div>
+  </div>
+</div>
+
+<div id="bossPanel" class="panel">
+  <b id="bossName">SHADOW BOSS</b>
+  <div class="bar" style="width:min(350px,75vw)">
+    <div id="bossFill" class="fill"></div>
+  </div>
+</div>
+
+<div id="message"></div>
+
+<div id="topButtons">
+  <button onclick="enterWorld()">EXPLORE</button>
+  <button onclick="enterArena()">ARENA</button>
+  <button onclick="showInventory()">INVENTORY</button>
+  <button onclick="saveGame()">SAVE</button>
+  <button onclick="enterXR('immersive-vr')">VR</button>
+  <button onclick="enterXR('immersive-ar')">AR</button>
+  <button onclick="enterMR()">MR</button>
+</div>
+
+<div id="help">
+  PC: WASD move • J attack • K energy • L ultimate • Shift dodge • E interact
+</div>
+
+<div id="controls">
+  <div id="movement">
+    <button class="controlBtn" data-key="w">▲</button>
+    <button class="controlBtn" data-key="a">◀</button>
+    <button class="controlBtn" data-key="s">▼</button>
+    <button class="controlBtn" data-key="d">▶</button>
+  </div>
+  <div id="attacks">
+    <button class="controlBtn" onclick="attack()">ATTACK</button>
+    <button class="controlBtn" onclick="energyBlast()">ENERGY</button>
+    <button class="controlBtn" onclick="ultimate()">ULTIMATE</button>
+    <button class="controlBtn" onclick="dodge()">DODGE</button>
+    <button class="controlBtn" onclick="interact()">USE</button>
+  </div>
+</div>
+
+<div id="notice"></div>
+
+<script>
+"use strict";
+
+// --------------------------------------------------
+// GAME DATA
+// --------------------------------------------------
+
+const canvas = document.getElementById("gameCanvas");
+const engine = new BABYLON.Engine(canvas, true, {
+  preserveDrawingBuffer:false,
+  stencil:true,
+  antialias:true
+});
+
+const heroes = [
+  {name:"REN",color:"#258cff",description:"The Blue Flame Warrior"},
+  {name:"KAI",color:"#ff8b25",description:"The Firestorm Fighter"},
+  {name:"YUKI",color:"#46e6ed",description:"The Ice Guardian"},
+  {name:"AKIRA",color:"#b16cff",description:"The Shadow Master"}
+];
+
+let selectedHero = 0;
+let gameStarted = false;
+let gameMode = "world";
+let level = 1;
+let xp = 0;
+let xpNeeded = 100;
+let coins = 0;
+let health = 100;
+let maxHealth = 100;
+let attackCooldown = 0;
+let energyCooldown = 0;
+let ultimateCooldown = 0;
+let dodgeTimer = 0;
+let playerAction = "";
+let actionTimer = 0;
+let enemies = [];
+let projectiles = [];
+let keys = {};
+let xrHelper = null;
+let questKills = 0;
+let inventory = ["Training Sword"];
+let noticeTimer = 0;
+let bossDefeated = false;
+
+let scene, camera, player, playerParts, arena, portal;
+let villageSpawn = new BABYLON.Vector3(0,0,12);
+let arenaSpawn = new BABYLON.Vector3(0,0,0);
+
+function chooseHero(index){
+  selectedHero = index;
+  document.getElementById("heroDescription").textContent =
+    heroes[index].name+" — "+heroes[index].description;
+}
+
+function showMessage(text, duration=1800){
+  const el = document.getElementById("message");
+  el.textContent = text;
+  noticeTimer = duration;
+}
+
+function showNotice(text){
+  const el = document.getElementById("notice");
+  el.textContent = text;
+  el.style.display = "block";
+  setTimeout(()=>el.style.display="none",2500);
+}
+
+// --------------------------------------------------
+// MATERIALS AND SCENE
+// --------------------------------------------------
+
+function material(name,color,emission=null){
+  const m = new BABYLON.StandardMaterial(name,scene);
+  m.diffuseColor = BABYLON.Color3.FromHexString(color);
+  if(emission) m.emissiveColor = BABYLON.Color3.FromHexString(emission);
+  return m;
+}
+
+function createScene(){
+  scene = new BABYLON.Scene(engine);
+  scene.clearColor = new BABYLON.Color4(0.43,0.70,0.92,1);
+  scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+  scene.fogDensity = 0.003;
+  scene.fogColor = new BABYLON.Color3(0.43,0.70,0.92);
+
+  const light = new BABYLON.HemisphericLight(
+    "skyLight",new BABYLON.Vector3(0,1,0),scene
+  );
+  light.intensity = 0.9;
+
+  const sun = new BABYLON.DirectionalLight(
+    "sun",new BABYLON.Vector3(-0.5,-1,0.3),scene
+  );
+  sun.position = new BABYLON.Vector3(30,50,-30);
+  sun.intensity = 0.8;
+
+  camera = new BABYLON.ArcRotateCamera(
+    "camera",-Math.PI/2,1.15,15,
+    new BABYLON.Vector3(0,1,0),scene
+  );
+  camera.lowerRadiusLimit = 7;
+  camera.upperRadiusLimit = 22;
+  camera.lowerBetaLimit = 0.55;
+  camera.upperBetaLimit = 1.45;
+  camera.attachControl(canvas,true);
+  camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
+
+  createWorld();
+  createPlayer();
+
+  scene.onBeforeRenderObservable.add(updateGame);
+  return scene;
+}
+
+// --------------------------------------------------
+// WORLD DESIGN
+// --------------------------------------------------
+
+function createWorld(){
+  const grass = material("grass","#4d9a55");
+  const pathMat = material("path","#b49a70");
+  const stone = material("stone","#687b91");
+  const wood = material("wood","#765039");
+  const leaves = material("leaves","#237747");
+  const gold = material("gold","#ffc34e","#a66a00");
+  const blue = material("portalBlue","#267dff","#174cff");
+
+  const ground = BABYLON.MeshBuilder.CreateGround(
+    "worldGround",{width:240,height:240},scene
+  );
+  ground.material = grass;
+
+  // Paths through the open world
+  const path1 = BABYLON.MeshBuilder.CreateGround(
+    "mainPath",{width:9,height:100},scene
+  );
+  path1.position.z = 10;
+  path1.material = pathMat;
+
+  const path2 = BABYLON.MeshBuilder.CreateGround(
+    "crossPath",{width:100,height:7},scene
+  );
+  path2.position.z = 10;
+  path2.material = pathMat;
+
+  // Arena platform
+  arena = BABYLON.MeshBuilder.CreateCylinder(
+    "arena",{diameter:38,height:1,tessellation:48},scene
+  );
+  arena.position.y = 0.1;
+  arena.material = stone;
+
+  const arenaRing = BABYLON.MeshBuilder.CreateTorus(
+    "arenaRing",{diameter:34,thickness:0.35},scene
+  );
+  arenaRing.position.y = 0.8;
+  arenaRing.material = gold;
+
+  // Arena pillars
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;
+    const x=Math.cos(a)*18;
+    const z=Math.sin(a)*18;
+    const p=BABYLON.MeshBuilder.CreateBox(
+      "arenaPillar",{width:1.4,height:5,depth:1.4},scene
+    );
+    p.position.set(x,2.5,z);
+    p.material=gold;
+  }
+
+  // Village buildings
+  for(let i=0;i<6;i++){
+    const x=(i%3)*13-13;
+    const z=30+Math.floor(i/3)*12;
+    const house=BABYLON.MeshBuilder.CreateBox(
+      "house",{width:8,height:5,depth:7},scene
+    );
+    house.position.set(x,2.5,z);
+    house.material=wood;
+
+    const roof=BABYLON.MeshBuilder.CreateCylinder(
+      "roof",{diameter:8.5,height:2,tessellation:4},scene
+    );
+    roof.rotation.y=Math.PI/4;
+    roof.position.set(x,6,z);
+    roof.material=material("roofMat"+i,"#8d3438");
+  }
+
+  // Trees
+  for(let i=0;i<65;i++){
+    const x=(Math.random()-0.5)*210;
+    const z=(Math.random()-0.5)*210;
+    if(Math.abs(x)<24 && Math.abs(z)<28) continue;
+
+    const trunk=BABYLON.MeshBuilder.CreateCylinder(
+      "treeTrunk",{height:3,diameter:0.65},scene
+    );
+    trunk.position.set(x,1.5,z);
+    trunk.material=wood;
+
+    const crown=BABYLON.MeshBuilder.CreateSphere(
+      "treeCrown",{diameter:4,segments:6},scene
+    );
+    crown.position.set(x,4,z);
+    crown.material=leaves;
+  }
+
+  // Rocks
+  for(let i=0;i<28;i++){
+    const rock=BABYLON.MeshBuilder.CreateSphere(
+      "rock",{diameter:1.5+Math.random()*2,segments:5},scene
+    );
+    rock.position.set(
+      (Math.random()-0.5)*190,0.6,
+      (Math.random()-0.5)*190
+    );
+    rock.scaling.y=0.6;
+    rock.material=stone;
+  }
+
+  // Glowing world portal
+  portal=BABYLON.MeshBuilder.CreateTorus(
+    "portal",{diameter:5,thickness:0.35},scene
+  );
+  portal.position.set(0,3,48);
+  portal.material=blue;
+
+  const portalBase=BABYLON.MeshBuilder.CreateCylinder(
+    "portalBase",{diameter:7,height:0.5},scene
+  );
+  portalBase.position.set(0,0.25,48);
+  portalBase.material=stone;
+
+  // Decorative crystals
+  for(let i=0;i<12;i++){
+    const c=BABYLON.MeshBuilder.CreatePolyhedron(
+      "crystal",{type:1,size:1.1},scene
+    );
+    const a=i*Math.PI/6;
+    c.position.set(Math.cos(a)*27,1.4,Math.sin(a)*27);
+    c.material=blue;
+  }
+
+  // World boundaries are handled in player movement.
+}
+
+// --------------------------------------------------
+// CHARACTER CREATION
+// --------------------------------------------------
+
+function createFighter(name,color,position,isBoss=false){
+  const root=new BABYLON.TransformNode(name+"Root",scene);
+  root.position.copyFrom(position);
+
+  const bodyMat=material(name+"Body",color);
+  const darkMat=material(name+"Dark","#172239");
+  const skinMat=material(name+"Skin","#f0c29e");
+  const eyeMat=material(name+"Eyes","#101a30");
+  const glowMat=material(name+"Glow",color,color);
+
+  function box(part,w,h,d,x,y,z,mat){
+    const m=BABYLON.MeshBuilder.CreateBox(
+      part,{width:w,height:h,depth:d},scene
+    );
+    m.parent=root;
+    m.position.set(x,y,z);
+    m.material=mat;
+    return m;
+  }
+
+  function sphere(part,size,x,y,z,mat){
+    const m=BABYLON.MeshBuilder.CreateSphere(
+      part,{diameter:size,segments:12},scene
+    );
+    m.parent=root;
+    m.position.set(x,y,z);
+    m.material=mat;
+    return m;
+  }
+
+  box(name+"Body",0.95,1.2,0.55,0,1.35,0,bodyMat);
+  sphere(name+"Head",0.82,0,2.25,0,skinMat);
+
+  // Hair / helmet
+  const hair=sphere(name+"Hair",0.9,0,2.55,0.03,darkMat);
+  hair.scaling.y=0.65;
+
+  box(name+"ChestMark",0.42,0.15,0.04,0,1.55,-0.29,glowMat);
+
+  // Arm pivots allow visible attack animation
+  const leftArm=new BABYLON.TransformNode(name+"LeftArm",scene);
+  leftArm.parent=root;
+  leftArm.position.set(-0.65,1.8,0);
+
+  const rightArm=new BABYLON.TransformNode(name+"RightArm",scene);
+  rightArm.parent=root;
+  rightArm.position.set(0.65,1.8,0);
+
+  for(const [pivot,label] of [[leftArm,"L"],[rightArm,"R"]]){
+    const arm=BABYLON.MeshBuilder.CreateBox(
+      name+"Arm"+label,{width:0.32,height:0.9,depth:0.36},scene
+    );
+    arm.parent=pivot;
+    arm.position.y=-0.38;
+    arm.material=bodyMat;
+
+    const hand=BABYLON.MeshBuilder.CreateSphere(
+      name+"Hand"+label,{diameter:0.35},scene
+    );
+    hand.parent=pivot;
+    hand.position.y=-0.82;
+    hand.material=skinMat;
+  }
+
+  const leftLeg=box(name+"LegL",0.38,0.85,0.42,-0.28,0.42,0,darkMat);
+  const rightLeg=box(name+"LegR",0.38,0.85,0.42,0.28,0.42,0,darkMat);
+
+  return {
+    root,leftArm,rightArm,leftLeg,rightLeg,
+    health:isBoss?350:65,
+    maxHealth:isBoss?350:65,
+    speed:isBoss?2.3:2.0,
+    attackTimer:0,
+    isBoss,
+    name,
+    dead:false
+  };
+}
+
+function createPlayer(){
+  if(player) player.root.dispose();
+  player=createFighter(
+    heroes[selectedHero].name,
+    heroes[selectedHero].color,
+    villageSpawn
+  );
+  player.health=maxHealth;
+  player.maxHealth=maxHealth;
+  camera.target=player.root.position;
+  document.getElementById("heroName").textContent=heroes[selectedHero].name;
+}
+
+// --------------------------------------------------
+// ENEMIES AND BOSSES
+// --------------------------------------------------
+
+function clearEnemies(){
+  enemies.forEach(e=>e.root.dispose());
+  enemies=[];
+}
+
+function spawnEnemy(x,z,boss=false){
+  const enemy=createFighter(
+    boss?"SHADOW KING":"SHADOW SOLDIER",
+    boss?"#9d35d9":"#b33c55",
+    new BABYLON.Vector3(x,0,z),
+    boss
+  );
+  enemy.health=boss?350+level*18:65+level*4;
+  enemy.maxHealth=enemy.health;
+  enemy.speed=boss?2.4+level*0.025:1.6+level*0.035;
+  enemies.push(enemy);
+  return enemy;
+}
+
+function spawnWorldEnemies(){
+  clearEnemies();
+  for(let i=0;i<7;i++){
+    spawnEnemy(
+      (Math.random()-0.5)*75,
+      (Math.random()-0.5)*75
+    );
+  }
+}
+
+function spawnArenaBoss(){
+  clearEnemies();
+  bossDefeated=false;
+  const boss=spawnEnemy(0,0,true);
+  boss.root.position.set(0,0,-9);
+  document.getElementById("bossPanel").style.display="block";
+  document.getElementById("bossName").textContent=
+    "SHADOW KING — LEVEL "+level;
+  showMessage("⚔ THE SHADOW KING HAS ARRIVED!",2500);
+}
+
+// --------------------------------------------------
+// GAME MODES
+// --------------------------------------------------
+
+function enterWorld(){
+  if(!gameStarted) return;
+  gameMode="world";
+  player.root.position.copyFrom(villageSpawn);
+  clearEnemies();
+  spawnWorldEnemies();
+  document.getElementById("locationText").textContent="OPEN WORLD";
+  document.getElementById("questText").textContent=
+    "Quest: Defeat 3 Shadow Soldiers";
+  document.getElementById("bossPanel").style.display="none";
+  questKills=0;
+  showMessage("EXPLORE THE LEGENDARY WORLD!");
+}
+
+function enterArena(){
+  if(!gameStarted) return;
+  gameMode="arena";
+  player.root.position.copyFrom(arenaSpawn);
+  player.root.position.z=12;
+  spawnArenaBoss();
+  document.getElementById("locationText").textContent="BOSS ARENA";
+  document.getElementById("questText").textContent=
+    "Quest: Defeat the Shadow King";
+}
+
+function startGame(){
+  document.getElementById("menu").style.display="none";
+  gameStarted=true;
+  health=maxHealth;
+  level=Math.max(1,level);
+  enterWorld();
+  updateHUD();
+  showMessage("WELCOME, "+heroes[selectedHero].name+"!");
+}
+
+// --------------------------------------------------
+// COMBAT
+// --------------------------------------------------
+
+function animateAttack(type){
+  playerAction=type;
+  actionTimer=0.35;
+}
+
+function attack(){
+  if(!gameStarted || attackCooldown>0) return;
+  attackCooldown=0.42;
+  animateAttack("attack");
+
+  let target=null;
+  let nearest=4.0;
+
+  enemies.forEach(e=>{
+    if(e.dead) return;
+    const d=BABYLON.Vector3.Distance(
+      player.root.position,e.root.position
+    );
+    if(d<nearest){nearest=d;target=e;}
+  });
+
+  if(target){
+    damageEnemy(target,18+level*1.2);
+    showMessage("COMBO HIT!");
+  }else{
+    showMessage("MISS — MOVE CLOSER",700);
+  }
+}
+
+function energyBlast(){
+  if(!gameStarted || energyCooldown>0) return;
+  energyCooldown=1.5;
+  animateAttack("energy");
+
+  const direction=new BABYLON.Vector3(
+    0,0,1
+  );
+  const target=enemies
+    .filter(e=>!e.dead)
+    .sort((a,b)=>
+      BABYLON.Vector3.Distance(player.root.position,a.root.position)-
+      BABYLON.Vector3.Distance(player.root.position,b.root.position)
+    )[0];
+
+  if(!target){
+    showMessage("NO TARGET");
+    return;
+  }
+
+  const orb=BABYLON.MeshBuilder.CreateSphere(
+    "energyOrb",{diameter:1.0,segments:12},scene
+  );
+  const orbMat=material("orbMat"+Date.now(),"#4bdfff","#35aaff");
+  orb.material=orbMat;
+  orb.position=player.root.position.add(new BABYLON.Vector3(0,1.5,0));
+
+  projectiles.push({
+    mesh:orb,target,damage:28+level*2,
+    speed:19
+  });
+  showMessage("ENERGY BLAST!");
+}
+
+function ultimate(){
+  if(!gameStarted || ultimateCooldown>0) return;
+  ultimateCooldown=8;
+  animateAttack("ultimate");
+
+  let hits=0;
+  enemies.forEach(e=>{
+    if(e.dead) return;
+    const d=BABYLON.Vector3.Distance(
+      player.root.position,e.root.position
+    );
+    if(d<16){
+      damageEnemy(e,e.isBoss?e.maxHealth*0.22:e.health);
+      hits++;
+    }
+  });
+
+  showMessage("✦ LEGENDARY BURST! ✦");
+  createBurst(player.root.position.clone());
+}
+
+function createBurst(pos){
+  const burst=BABYLON.MeshBuilder.CreateSphere(
+    "burst",{diameter:2,segments:12},scene
+  );
+  burst.position=pos.add(new BABYLON.Vector3(0,1,0));
+  burst.material=material("burstMat"+Date.now(),"#ffdc61","#ff9c20");
+  let size=1;
+  const obs=scene.onBeforeRenderObservable.add(()=>{
+    size+=0.18;
+    burst.scaling.setAll(size);
+    if(size>8){
+      scene.onBeforeRenderObservable.remove(obs);
+      burst.dispose();
+    }
+  });
+}
+
+function damageEnemy(enemy,amount){
+  if(enemy.dead) return;
+  enemy.health-=amount;
+  enemy.root.scaling.set(1.12,0.92,1.12);
+  setTimeout(()=>{
+    if(enemy.root && !enemy.root.isDisposed())
+      enemy.root.scaling.setAll(1);
+  },100);
+
+  if(enemy.health<=0){
+    enemy.health=0;
+    enemy.dead=true;
+    enemy.root.dispose();
+    coins+=enemy.isBoss?100:15;
+    gainXP(enemy.isBoss?120:35);
+
+    if(gameMode==="world"){
+      questKills++;
+      document.getElementById("questText").textContent=
+        "Quest: Defeat 3 Shadow Soldiers ("+questKills+"/3)";
+      if(questKills>=3){
+        coins+=50;
+        gainXP(50);
+        showMessage("QUEST COMPLETE! +50 COINS");
+      }
+    }
+
+    if(enemy.isBoss){
+      bossDefeated=true;
+      document.getElementById("bossPanel").style.display="none";
+      showMessage("🏆 SHADOW KING DEFEATED!",3000);
+      coins+=100;
+      gainXP(150);
+    }
+
+    updateHUD();
+  }
+}
+
+// --------------------------------------------------
+// MOVEMENT AND DODGE
+// --------------------------------------------------
+
+function dodge(){
+  if(!gameStarted || dodgeTimer>0) return;
+  dodgeTimer=0.45;
+  const forward=new BABYLON.Vector3(
+    Math.sin(player.root.rotation.y),0,
+    Math.cos(player.root.rotation.y)
+  );
+  player.root.position.addInPlace(forward.scale(4));
+  showMessage("DODGE!");
+}
+
+function interact(){
+  if(!gameStarted) return;
+  const d=BABYLON.Vector3.Distance(
+    player.root.position,new BABYLON.Vector3(0,0,48)
+  );
+  if(d<9){
+    enterArena();
+  }else{
+    showNotice("Find the glowing portal near the village to enter the arena.");
+  }
+}
+
+function updatePlayer(dt){
+  let dx=0,dz=0;
+  if(keys.w || keys.arrowup) dz+=1;
+  if(keys.s || keys.arrowdown) dz-=1;
+  if(keys.a || keys.arrowleft) dx-=1;
+  if(keys.d || keys.arrowright) dx+=1;
+
+  const moving=dx!==0 || dz!==0;
+  if(moving){
+    const len=Math.hypot(dx,dz);
+    dx/=len;dz/=len;
+    player.root.position.x+=dx*8*dt;
+    player.root.position.z+=dz*8*dt;
+    player.root.rotation.y=Math.atan2(dx,dz);
+  }
+
+  // Keep the player within the world.
+  player.root.position.x=Math.max(-112,Math.min(112,player.root.position.x));
+  player.root.position.z=Math.max(-112,Math.min(112,player.root.position.z));
+
+  camera.target=player.root.position.add(new BABYLON.Vector3(0,1,0));
+
+  if(actionTimer>0){
+    actionTimer-=dt;
+    const swing=Math.sin((0.35-actionTimer)*Math.PI/0.35);
+    player.leftArm.rotation.x=-swing*1.5;
+    player.rightArm.rotation.x=swing*1.5;
+  }else{
+    player.leftArm.rotation.x=0;
+    player.rightArm.rotation.x=0;
+  }
+
+  if(moving){
+    player.leftLeg.rotation.x=Math.sin(performance.now()*0.012)*0.45;
+    player.rightLeg.rotation.x=-player.leftLeg.rotation.x;
+  }else{
+    player.leftLeg.rotation.x=0;
+    player.rightLeg.rotation.x=0;
+  }
+
+  if(attackCooldown>0) attackCooldown-=dt;
+  if(energyCooldown>0) energyCooldown-=dt;
+  if(ultimateCooldown>0) ultimateCooldown-=dt;
+  if(dodgeTimer>0) dodgeTimer-=dt;
+}
+
+// --------------------------------------------------
+// ENEMY AI
+// --------------------------------------------------
+
+function updateEnemies(dt){
+  enemies.forEach(enemy=>{
+    if(enemy.dead) return;
+
+    const toPlayer=player.root.position.subtract(enemy.root.position);
+    const distance=toPlayer.length();
+
+    if(distance>2.2){
+      toPlayer.normalize();
+      enemy.root.position.addInPlace(
+        toPlayer.scale(enemy.speed*dt)
+      );
+      enemy.root.rotation.y=Math.atan2(toPlayer.x,toPlayer.z);
+      enemy.leftLeg.rotation.x=Math.sin(performance.now()*0.009)*0.3;
+      enemy.rightLeg.rotation.x=-enemy.leftLeg.rotation.x;
+    }else{
+      enemy.attackTimer-=dt;
+      if(enemy.attackTimer<=0){
+        enemy.attackTimer=enemy.isBoss?1.4:1.8;
+        enemy.leftArm.rotation.x=-1.4;
+        enemy.rightArm.rotation.x=1.4;
+
+        if(dodgeTimer<=0){
+          const damage=enemy.isBoss?13+level*0.3:6+level*0.15;
+          health=Math.max(0,health-damage);
+          showMessage(enemy.isBoss?"BOSS ATTACK!":"ENEMY HIT!",650);
+          updateHUD();
+        }
+      }
+    }
+
+    enemy.root.scaling.y=1+Math.sin(performance.now()*0.003)*0.025;
+  });
+
+  const boss=enemies.find(e=>e.isBoss && !e.dead);
+  if(boss){
+    document.getElementById("bossFill").style.width=
+      Math.max(0,boss.health/boss.maxHealth*100)+"%";
+  }
+
+  document.getElementById("enemyCount").textContent=
+    "Enemies nearby: "+enemies.filter(e=>!e.dead).length;
+}
+
+// --------------------------------------------------
+// PROJECTILES
+// --------------------------------------------------
+
+function updateProjectiles(dt){
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    if(!p.target || p.target.dead){
+      p.mesh.dispose();
+      projectiles.splice(i,1);
+      continue;
+    }
+
+    const targetPos=p.target.root.position.add(
+      new BABYLON.Vector3(0,1.3,0)
+    );
+    const direction=targetPos.subtract(p.mesh.position);
+    const distance=direction.length();
+
+    if(distance<1.3){
+      damageEnemy(p.target,p.damage);
+      p.mesh.dispose();
+      projectiles.splice(i,1);
+    }else{
+      direction.normalize();
+      p.mesh.position.addInPlace(direction.scale(p.speed*dt));
+    }
+  }
+}
+
+// --------------------------------------------------
+// LEVELS, XP AND SAVING
+// --------------------------------------------------
+
+function gainXP(amount){
+  xp+=amount;
+
+  while(xp>=xpNeeded && level<50){
+    xp-=xpNeeded;
+    level++;
+    xpNeeded=Math.floor(xpNeeded*1.16);
+    maxHealth+=8;
+    health=maxHealth;
+    showMessage("LEVEL UP! LEVEL "+level,2000);
+  }
+
+  if(level>=50){
+    xp=Math.min(xp,xpNeeded);
+    showMessage("MAX LEVEL REACHED!",2000);
+  }
+  updateHUD();
+}
+
+function updateHUD(){
+  document.getElementById("healthFill").style.width=
+    Math.max(0,health/maxHealth*100)+"%";
+  document.getElementById("xpFill").style.width=
+    Math.min(100,xp/xpNeeded*100)+"%";
+  document.getElementById("levelText").textContent=
+    "LEVEL "+level+" / 50";
+  document.getElementById("coinText").textContent="Coins: "+coins;
+}
+
+function saveGame(){
+  const data={
+    selectedHero,level,xp,xpNeeded,coins,health,maxHealth,
+    inventory
+  };
+  try{
+    localStorage.setItem("animeWorldLegendSave",JSON.stringify(data));
+    showNotice("Game progress saved on this device!");
+  }catch(e){
+    showNotice("Saving is unavailable in this browser.");
+  }
+}
+
+function loadGame(){
+  try{
+    const raw=localStorage.getItem("animeWorldLegendSave");
+    if(!raw) return;
+    const data=JSON.parse(raw);
+    selectedHero=data.selectedHero??0;
+    level=data.level??1;
+    xp=data.xp??0;
+    xpNeeded=data.xpNeeded??100;
+    coins=data.coins??0;
+    maxHealth=data.maxHealth??100;
+    health=Math.min(data.health??100,maxHealth);
+    inventory=data.inventory??["Training Sword"];
+  }catch(e){
+    console.warn("Save data could not be loaded.",e);
+  }
+}
+
+function showInventory(){
+  showNotice("INVENTORY: "+inventory.join(", ")+" | Coins: "+coins);
+}
+
+// --------------------------------------------------
+// XR: VR AND AR ENTRY
+// --------------------------------------------------
+
+async function enterXR(mode){
+  if(!gameStarted){
+    showNotice("Start the game first.");
+    return;
+  }
+
+  if(!navigator.xr){
+    showNotice("WebXR is not available in this browser. Use 3D mode.");
+    return;
+  }
+
+  try{
+    if(!xrHelper){
+      xrHelper=await scene.createDefaultXRExperienceAsync({
+        floorMeshes:[]
+      });
+    }
+    await xrHelper.baseExperience.enterXRAsync(
+      mode,"local-floor"
+    );
+    showNotice(mode==="immersive-vr"?"VR SESSION STARTED":"AR SESSION STARTED");
+  }catch(error){
+    console.error(error);
+    showNotice("This device or browser does not support this XR mode.");
+  }
+}
+
+function enterMR(){
+  showNotice("MR preview uses the browser's AR session. Full room scanning and occlusion are not implemented yet.");
+  enterXR("immersive-ar");
+}
+
+// --------------------------------------------------
+// MAIN UPDATE
+// --------------------------------------------------
+
+function updateGame(){
+  if(!gameStarted) return;
+
+  const dt=Math.min(engine.getDeltaTime()/1000,0.05);
+
+  updatePlayer(dt);
+  updateEnemies(dt);
+  updateProjectiles(dt);
+
+  if(noticeTimer>0){
+    noticeTimer-=dt*1000;
+    if(noticeTimer<=0)
+      document.getElementById("message").textContent="";
+  }
+
+  if(health<=0){
+    health=0;
+    gameStarted=false;
+    document.getElementById("menu").style.display="flex";
+    document.querySelector("#menu h2").textContent="YOU WERE DEFEATED";
+    document.querySelector("#menu .menuCard p").textContent=
+      "Your adventure is not over. Choose your hero and try again!";
+    showMessage("BATTLE OVER");
+  }
+
+  // Portal animation
+  if(portal){
+    portal.rotation.z+=dt*0.7;
+  }
+}
+
+// --------------------------------------------------
+// INPUT
+// --------------------------------------------------
+
+window.addEventListener("keydown",e=>{
+  const key=e.key.toLowerCase();
+  keys[key]=true;
+
+  if(key==="j") attack();
+  if(key==="k") energyBlast();
+  if(key==="l") ultimate();
+  if(key==="shift") dodge();
+  if(key==="e") interact();
+});
+
+window.addEventListener("keyup",e=>{
+  keys[e.key.toLowerCase()]=false;
+});
+
+document.querySelectorAll("[data-key]").forEach(button=>{
+  const key=button.dataset.key;
+  button.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    keys[key]=true;
+    button.setPointerCapture(e.pointerId);
+  });
+  const release=()=>{
+    keys[key]=false;
+  };
+  button.addEventListener("pointerup",release);
+  button.addEventListener("pointercancel",release);
+  button.addEventListener("lostpointercapture",release);
+});
+
+// --------------------------------------------------
+// STARTUP
+// --------------------------------------------------
+
+loadGame();
+chooseHero(selectedHero);
+createScene();
+
+engine.runRenderLoop(()=>{
+  scene.render();
+});
+
+window.addEventListener("resize",()=>{
+  engine.resize();
+});
+
+updateHUD();
+</script>
+</body>
+</html>
